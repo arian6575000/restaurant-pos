@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.nearbyconnections'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.nearbyconnections"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+}
+
+dependencies {
+  // Google Nearby Connections. Version is an assumption to be verified on the first device build.
+  implementation 'com.google.android.gms:play-services-nearby:19.3.0'
+}
