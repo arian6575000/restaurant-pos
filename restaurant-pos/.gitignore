@@ -1,0 +1,7 @@
+node_modules/
+.expo/
+dist/
+*.log
+
+# license keys + Hub registration JSON (contain the PRIVATE key) - never commit
+.license/

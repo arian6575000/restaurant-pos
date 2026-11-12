@@ -1,0 +1,53 @@
+{
+  "name": "restaurant-pos",
+  "version": "0.1.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo/vector-icons": "^15.1.1",
+    "@react-native-community/datetimepicker": "^9.3.0",
+    "expo": "~58.0.14",
+    "expo-application": "~58.1.2",
+    "expo-asset": "~58.0.16",
+    "expo-camera": "~58.0.14",
+    "expo-clipboard": "~58.0.4",
+    "expo-constants": "~58.0.12",
+    "expo-crypto": "~58.0.7",
+    "expo-device": "~58.0.5",
+    "expo-font": "~58.0.8",
+    "expo-haptics": "~58.0.7",
+    "expo-image": "~58.0.18",
+    "expo-linear-gradient": "~58.0.3",
+    "expo-linking": "~58.0.13",
+    "expo-local-authentication": "~58.0.2",
+    "expo-router": "~58.0.23",
+    "expo-screen-capture": "~58.0.6",
+    "expo-secure-store": "~58.0.2",
+    "expo-splash-screen": "~58.0.10",
+    "expo-sqlite": "~58.0.13",
+    "expo-status-bar": "~58.0.3",
+    "react": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-gesture-handler": "~3.3.0",
+    "react-native-qrcode-svg": "6.3.54",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0",
+    "react-native-svg": "15.16.0",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "~19.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx tests/license.test.ts && tsx tests/core.test.ts && tsx tests/network.test.ts && tsx tests/nearby.test.ts",
+    "license:project": "node tools/make-project.mjs"
+  },
+  "private": true
+}
