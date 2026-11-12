@@ -1,6 +1,7 @@
 package expo.modules.nearbyconnections
 
 import android.util.Base64
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionInfo
@@ -74,7 +75,13 @@ class NearbyConnectionsModule : Module() {
   private fun requestTo(endpointId: String, promise: Promise) {
     pendingConnect[endpointId] = promise
     client.requestConnection(localName, endpointId, lifecycle)
-      .addOnFailureListener { e -> pendingConnect.remove(endpointId)?.reject(CodedException("request_failed", e.message ?: "requestConnection failed", e)) }
+      .addOnFailureListener { e ->
+        val p = pendingConnect.remove(endpointId)
+        // Already linked to this endpoint: that is success for us (the JS layer sends HELLO on the "connected" event).
+        if ((e as? ApiException)?.statusCode == ConnectionsStatusCodes.STATUS_ALREADY_CONNECTED_TO_ENDPOINT) {
+          sendEvent("onPeer", mapOf("peerId" to endpointId, "state" to "connected")); p?.resolve(endpointId)
+        } else p?.reject(CodedException("request_failed", "${e.message ?: "requestConnection failed"} (${(e as? ApiException)?.statusCode ?: "?"})", e))
+      }
   }
 
   override fun definition() = ModuleDefinition {
@@ -85,12 +92,21 @@ class NearbyConnectionsModule : Module() {
     AsyncFunction("start") { role: String, serviceId: String, name: String, promise: Promise ->
       localName = name
       val strategy = Strategy.P2P_STAR
-      val task = if (role == "parent")
-        client.startAdvertising(name, serviceId, lifecycle, AdvertisingOptions.Builder().setStrategy(strategy).build())
-      else
-        client.startDiscovery(serviceId, discovery, DiscoveryOptions.Builder().setStrategy(strategy).build())
+      val c = client
+      // Restart cleanly: a second start without stopping fails with ALREADY_ADVERTISING / ALREADY_DISCOVERING.
+      val task = if (role == "parent") {
+        c.stopAdvertising()
+        c.startAdvertising(name, serviceId, lifecycle, AdvertisingOptions.Builder().setStrategy(strategy).build())
+      } else {
+        c.stopDiscovery(); discovered.clear()
+        c.startDiscovery(serviceId, discovery, DiscoveryOptions.Builder().setStrategy(strategy).build())
+      }
       task.addOnSuccessListener { promise.resolve(null) }
-        .addOnFailureListener { e -> promise.reject(CodedException("start_failed", e.message ?: "start failed", e)) }
+        .addOnFailureListener { e ->
+          val code = (e as? ApiException)?.statusCode
+          if (code == ConnectionsStatusCodes.STATUS_ALREADY_ADVERTISING || code == ConnectionsStatusCodes.STATUS_ALREADY_DISCOVERING) promise.resolve(null)
+          else promise.reject(CodedException("start_failed", "${e.message ?: "start failed"} (${code ?: "?"})", e))
+        }
     }
 
     /** Child: connect to the Parent advertising `endpointName`; waits for discovery up to timeoutMs. */

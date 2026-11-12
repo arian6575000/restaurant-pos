@@ -50,11 +50,17 @@ export class NearbyTransport implements Transport {
   private subs: { remove(): void }[] = [];
   private re = new Map<string, Reassembler>();
   private sendChain = new Map<string, Promise<unknown>>();
+  private startedKey: string | null = null;
+  private connecting = new Map<string, Promise<void>>();
+  private linked = new Set<string>();
 
   constructor(private native: NativeNearby, private maxFrame = MAX_FRAME_BYTES, private ensurePermissions: () => Promise<void> = async () => {}) {}
 
   async start(role: 'parent' | 'child', opts: { serviceId: string; name: string }): Promise<void> {
     await this.ensurePermissions();
+    const key = `${role}|${opts.serviceId}|${opts.name}`;
+    // Starting twice would make the native layer fail with "already advertising/discovering"; once is enough until stop().
+    if (this.startedKey === key) return;
     this.detach();
     this.subs.push(
       this.native.addListener('onFrame', (e) => {
@@ -62,15 +68,21 @@ export class NearbyTransport implements Transport {
         const msg = r.push(fromBase64(e.data));
         if (msg) this.frameCbs.forEach((cb) => cb(e.peerId, msg));
       }),
-      this.native.addListener('onPeer', (e) => { if (e.state === 'disconnected') { this.re.delete(e.peerId); this.sendChain.delete(e.peerId); } this.peerCbs.forEach((cb) => cb(e.peerId, e.state)); }),
+      this.native.addListener('onPeer', (e) => { if (e.state === 'connected') this.linked.add(e.peerId); if (e.state === 'disconnected') { this.re.delete(e.peerId); this.sendChain.delete(e.peerId); this.linked.delete(e.peerId); } this.peerCbs.forEach((cb) => cb(e.peerId, e.state)); }),
       this.native.addListener('onAuthDigits', (e) => this.digitCbs.forEach((cb) => cb(e.peerId, e.digits))),
     );
     await this.native.start(role, opts.serviceId, opts.name);
+    this.startedKey = key;
   }
-  async stop(): Promise<void> { await this.native.stop(); this.detach(); this.re.clear(); this.sendChain.clear(); }
+  async stop(): Promise<void> { this.startedKey = null; this.connecting.clear(); this.linked.clear(); await this.native.stop(); this.detach(); this.re.clear(); this.sendChain.clear(); }
   private detach() { this.subs.forEach((s) => s.remove()); this.subs = []; }
 
-  async connect(endpointName: string): Promise<void> { await this.native.connect(endpointName, CONNECT_TIMEOUT_MS); }
+  connect(endpointName: string): Promise<void> {
+    const open = this.connecting.get(endpointName); if (open) return open;   // one attempt at a time per Parent
+    const p = this.native.connect(endpointName, CONNECT_TIMEOUT_MS).then(() => undefined).finally(() => { this.connecting.delete(endpointName); });
+    this.connecting.set(endpointName, p);
+    return p;
+  }
 
   /** Frames to one peer are sent strictly one after another so chunks of different messages never interleave out of order. */
   send(peerId: string, message: Uint8Array): Promise<void> {

@@ -11,13 +11,13 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#eef1f8"
+      "backgroundColor": "#FFF6EE"
     },
     "ios": { "supportsTablet": true, "bundleIdentifier": "com.restaurantpos.app" },
     "android": {
       "package": "com.restaurantpos.app",
       "adaptiveIcon": {
-        "backgroundColor": "#3E6BFF",
+        "backgroundColor": "#F25C1F",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

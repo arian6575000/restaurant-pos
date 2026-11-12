@@ -22,7 +22,7 @@ export function T({ children, size = 15, bold, color = C.ink, style, center, num
   const { rtl } = useApp();
   const base: TextStyle = rtl
     ? { fontSize: size + 1, color, textAlign: center ? 'center' : 'right', fontFamily: bold ? FONT_UR_BOLD : FONT_UR, lineHeight: Math.round(size * 2.05), writingDirection: 'rtl' }
-    : { fontSize: size, color, textAlign: center ? 'center' : 'left', fontWeight: bold ? '700' : '400' };
+    : { fontSize: size, color, textAlign: center ? 'center' : 'left', fontFamily: bold ? 'Inter_700Bold' : 'Inter_400Regular' };
   return <Text selectable={selectable} numberOfLines={numberOfLines} style={[base, style]}>{children}</Text>;
 }
 export const Muted = (p: TProps) => <T size={13} color={C.faint} {...p} />;

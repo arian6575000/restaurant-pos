@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-community/datetimepicker": "^9.3.0",
     "expo": "~58.0.14",
@@ -14,6 +15,8 @@
     "expo-crypto": "~58.0.7",
     "expo-device": "~58.0.5",
     "expo-font": "~58.0.8",
+    "expo-haptics": "~58.0.7",
+    "expo-image": "~58.0.18",
     "expo-linear-gradient": "~58.0.3",
     "expo-linking": "~58.0.13",
     "expo-local-authentication": "~58.0.2",
@@ -41,7 +44,7 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "typecheck": "tsc --noEmit",
     "test": "tsx tests/license.test.ts && tsx tests/core.test.ts && tsx tests/network.test.ts && tsx tests/nearby.test.ts",
     "license:project": "node tools/make-project.mjs"

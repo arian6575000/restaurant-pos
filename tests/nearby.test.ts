@@ -30,6 +30,25 @@ async function main() {
   let peers: string[] = []; tb.onPeer((p, s) => peers.push(p + s)); b.ls.onPeer.forEach((cb) => cb({ peerId: 'A', state: 'connected' }));
   assert.deepEqual(peers, ['Aconnected']);
   await tb.stop(); assert.equal(b.ls.onFrame.length, 0, 'listeners detached on stop');
+
+  // Regression: real Nearby fails a 2nd startDiscovery/startAdvertising ("already discovering"), and the Child's retry loop
+  // used to call start() again before every connect(), so a Child that missed the Parent once could never connect.
+  class StrictNative extends FakeNative {
+    active = false; connects = 0; found = false;
+    async start(role: any) { if (this.active) throw Object.assign(new Error('STATUS_ALREADY_DISCOVERING'), { code: 'start_failed' }); this.active = true; this.started.push(role); }
+    async connect() { this.connects++; if (!this.found) { await new Promise((r) => setTimeout(r, 5)); throw new Error('endpoint_not_found'); } return 'P'; }
+    async stop() { this.active = false; }
+  }
+  const sn = new StrictNative(), tc = new NearbyTransport(sn, 1024);
+  await tc.start('child', { serviceId: 's', name: 'c' });
+  await tc.start('child', { serviceId: 's', name: 'c' });                    // retry loop calls start again: must be a no-op
+  assert.equal(sn.started.length, 1, 'start is idempotent');
+  const c1 = tc.connect('RPOS-1'), c2 = tc.connect('RPOS-1');                // concurrent retries share one attempt
+  await assert.rejects(Promise.all([c1, c2]), /endpoint_not_found/);
+  assert.equal(sn.connects, 1, 'one connect attempt at a time');
+  sn.found = true; await tc.start('child', { serviceId: 's', name: 'c' });  // Parent appeared: next retry succeeds
+  await tc.connect('RPOS-1'); assert.equal(sn.connects, 2);
+  await tc.stop(); await tc.start('child', { serviceId: 's', name: 'c' }); assert.equal(sn.started.length, 2, 'start works again after stop');
   console.log('nearby transport tests passed');
 }
 void main();

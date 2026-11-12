@@ -42,3 +42,10 @@ export function parseMinor(s: string): number | null {
   if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
   return Math.round(parseFloat(t) * 100);
 }
+
+/** Short elapsed time like "4m", "1h 05m". */
+export function elapsed(fromMs: number, now = Date.now()): string {
+  const m = Math.max(0, Math.floor((now - fromMs) / 60000));
+  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+}
+export function startOfDay(ms = Date.now()): number { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }

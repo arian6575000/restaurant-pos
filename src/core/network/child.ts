@@ -13,7 +13,7 @@ import { backoffMs, decodeMsg, encodeMsg, qrProof, type Msg, type PairingQr, typ
 
 export interface ChildOpts { db: Db; transport: Transport; deviceId: string; keys: Identity; deviceName: string; now?: () => number }
 export type Membership = 'none' | 'enrolling' | 'waiting' | 'active' | 'rejected' | 'revoked';
-export interface ChildStatus { membership: Membership; connected: boolean; authed: boolean; lease: LeaseStatus; pendingEvents: number; lastSeq: number }
+export interface ChildStatus { membership: Membership; error: string; connected: boolean; authed: boolean; lease: LeaseStatus; pendingEvents: number; lastSeq: number }
 
 /** Minimum permission each event type needs on the Child (the Parent re-checks with its own registry; this only gives fast feedback). */
 export class ChildNode {
@@ -48,16 +48,20 @@ export class ChildNode {
     await kvSet(this.o.db, 'parent_endpoint', qr.endpointName);
     await kvSet(this.o.db, 'pairing', JSON.stringify({ nonce: qr.nonce, serviceId: qr.serviceId }));
     await kvSet(this.o.db, 'membership', 'enrolling');
-    await this.o.transport.start('child', { serviceId: qr.serviceId, name: this.o.deviceName });
-    await this.o.transport.connect(qr.endpointName);
+    await this.link(qr.serviceId, qr.endpointName);
+  }
+  /** Last connection problem (not found, permission, Bluetooth off...). Cleared when a link is up. */
+  lastError = '';
+  private async link(serviceId: string, endpoint: string): Promise<void> {
+    try { await this.o.transport.start('child', { serviceId, name: this.o.deviceName }); await this.o.transport.connect(endpoint); this.lastError = ''; }
+    catch (e: any) { this.lastError = String(e?.code ?? e?.message ?? e); }   // the periodic reconnect keeps trying
     this.changed();
   }
   /** Reconnect to the known Parent (after restart or link loss). */
   async reconnect(): Promise<void> {
     const ep = await kvGet(this.o.db, 'parent_endpoint'); const pair = await kvJson<{ serviceId: string }>(this.o.db, 'pairing');
     if (!ep || !pair || (await this.membership()) === 'revoked') return;
-    await this.o.transport.start('child', { serviceId: pair.serviceId, name: this.o.deviceName });
-    await this.o.transport.connect(ep);
+    await this.link(pair.serviceId, ep);
   }
 
   async membership(): Promise<Membership> { return ((await kvGet(this.o.db, 'membership')) as Membership) ?? 'none'; }
@@ -123,7 +127,7 @@ export class ChildNode {
     const n = await this.o.db.getFirstAsync<{ c: number }>(`SELECT COUNT(*) AS c FROM events WHERE device_id = ? AND state IN ('pending','sent')`, [this.o.deviceId]);
     return {
       membership: await this.membership(), connected: !!this.peer, authed: this.authed, lease: await this.leaseStatus(),
-      pendingEvents: n?.c ?? 0, lastSeq: Number((await kvGet(this.o.db, 'last_seq')) ?? '0'),
+      pendingEvents: n?.c ?? 0, error: this.lastError, lastSeq: Number((await kvGet(this.o.db, 'last_seq')) ?? '0'),
     };
   }
 
