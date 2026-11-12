@@ -1,4 +1,3 @@
-
 name: Extract ZIP in Repository Root
 
 on:
@@ -23,6 +22,10 @@ jobs:
             echo "No ZIP file found in repository root."
             exit 1
           fi
+
+          # Remove the previous version of the project folders first, so files deleted in the new version do not linger.
+          # (Also removes a nested restaurant-pos/ folder left by an earlier mistake.)
+          rm -rf src tests modules scripts assets plugins tools restaurant-pos
 
           unzip -o "$ZIP_FILE" -d .
 
